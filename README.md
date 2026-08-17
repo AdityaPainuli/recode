@@ -4,6 +4,12 @@ Convert videos without touching a terminal. Local and private, nothing ever leav
 
 Drop a video, pick what you want, done. No codec jargon, no upload, no file size limits. Runs on macOS, Windows, and Linux.
 
+## Demo
+
+![Recode demo](assets/demo.gif)
+
+[Full-quality demo video](assets/demo.mp4)
+
 ## Download
 
 Grab the latest build for your system from [Releases](https://github.com/AdityaPainuli/recode/releases/latest):
