@@ -1,0 +1,35 @@
+name: Bug report
+description: Something in Recode didn't work
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, and what went wrong?
+      placeholder: Dropped an .mkv file, picked "Play anywhere", got an error at 40%.
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error output
+      description: If the app showed an error message, paste it here.
+      render: shell
+  - type: input
+    id: file-type
+    attributes:
+      label: Input file type
+      placeholder: e.g. 4K HEVC .mov from iPhone

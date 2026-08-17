@@ -3,8 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
-import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import "./App.css";
+
+const REPO_URL = "https://github.com/AdityaPainuli/recode";
 
 const VIDEO_EXTENSIONS = [
   "mp4", "mov", "mkv", "avi", "webm", "m4v", "wmv", "flv",
@@ -38,15 +40,65 @@ const PRESETS = [
   },
 ];
 
+const VIDEO_CODECS = [
+  { id: "h264", label: "H.264 / AVC" },
+  { id: "hevc", label: "H.265 / HEVC" },
+  { id: "vp9", label: "VP9" },
+  { id: "av1", label: "AV1" },
+  { id: "copy", label: "Copy (no re-encode)" },
+];
+
+const AUDIO_CODECS = [
+  { id: "aac", label: "AAC" },
+  { id: "opus", label: "Opus" },
+  { id: "mp3", label: "MP3" },
+  { id: "flac", label: "FLAC" },
+  { id: "copy", label: "Copy (no re-encode)" },
+  { id: "none", label: "No audio" },
+];
+
+const CONTAINERS = [
+  { id: "mp4", label: "MP4" },
+  { id: "mkv", label: "MKV" },
+  { id: "webm", label: "WebM" },
+  { id: "mov", label: "MOV" },
+];
+
+// WebM only accepts a subset of codecs; other containers take everything we offer.
+const WEBM_VIDEO = ["vp9", "av1", "copy"];
+const WEBM_AUDIO = ["opus", "none", "copy"];
+
 type Screen = "idle" | "converting" | "done" | "error";
 
 function fileName(path: string): string {
-  return path.split("/").pop() ?? path;
+  return path.split(/[/\\]/).pop() ?? path;
 }
 
 function isVideoFile(path: string): boolean {
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
   return VIDEO_EXTENSIONS.includes(ext);
+}
+
+function platformName(): "macos" | "windows" | "linux" {
+  const ua = navigator.userAgent;
+  if (ua.includes("Mac")) return "macos";
+  if (ua.includes("Windows")) return "windows";
+  return "linux";
+}
+
+const FFMPEG_INSTALL: Record<string, string> = {
+  macos: "brew install ffmpeg",
+  windows: "winget install ffmpeg",
+  linux: "sudo apt install ffmpeg",
+};
+
+function bugReportUrl(detail?: string): string {
+  const title = encodeURIComponent("[bug] ");
+  const body = encodeURIComponent(
+    `**Platform:** ${navigator.userAgent}\n\n**What happened:**\n\n` +
+      (detail ? "**Error output:**\n```\n" + detail + "\n```\n" : "")
+  );
+  return `${REPO_URL}/issues/new?title=${title}&body=${body}`;
 }
 
 function App() {
@@ -57,7 +109,11 @@ function App() {
   const [output, setOutput] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ffmpegOk, setFfmpegOk] = useState<boolean | null>(null);
-  const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [jobLabel, setJobLabel] = useState("");
+  const [advanced, setAdvanced] = useState(false);
+  const [vcodec, setVcodec] = useState("h264");
+  const [acodec, setAcodec] = useState("aac");
+  const [container, setContainer] = useState("mp4");
   const converting = useRef(false);
 
   useEffect(() => {
@@ -110,18 +166,45 @@ function App() {
     if (typeof selected === "string") setFile(selected);
   }
 
-  async function startConvert(preset: string) {
-    if (!file || converting.current) return;
+  async function startJob(label: string, invocation: Promise<string>) {
     converting.current = true;
-    setActivePreset(preset);
+    setJobLabel(label);
     setPercent(0);
     setScreen("converting");
     try {
-      await invoke<string>("start_convert", { input: file, preset });
+      await invocation;
     } catch (err) {
       converting.current = false;
       setError(String(err));
       setScreen("error");
+    }
+  }
+
+  function startPreset(preset: string) {
+    if (!file || converting.current) return;
+    const label = PRESETS.find((p) => p.id === preset)?.title ?? preset;
+    startJob(label, invoke<string>("start_convert", { input: file, preset }));
+  }
+
+  function startCustom() {
+    if (!file || converting.current) return;
+    const v = VIDEO_CODECS.find((c) => c.id === vcodec)?.label ?? vcodec;
+    startJob(
+      `${v} → ${container.toUpperCase()}`,
+      invoke<string>("start_convert_custom", {
+        input: file,
+        vcodec,
+        acodec,
+        container,
+      })
+    );
+  }
+
+  function pickContainer(next: string) {
+    setContainer(next);
+    if (next === "webm") {
+      if (!WEBM_VIDEO.includes(vcodec)) setVcodec("vp9");
+      if (!WEBM_AUDIO.includes(acodec)) setAcodec("opus");
     }
   }
 
@@ -134,11 +217,18 @@ function App() {
     setOutput(null);
     setError(null);
     setPercent(0);
-    setActivePreset(null);
+    setJobLabel("");
     setScreen("idle");
   }
 
-  const presetLabel = PRESETS.find((p) => p.id === activePreset)?.title ?? "";
+  const videoOptions =
+    container === "webm"
+      ? VIDEO_CODECS.filter((c) => WEBM_VIDEO.includes(c.id))
+      : VIDEO_CODECS;
+  const audioOptions =
+    container === "webm"
+      ? AUDIO_CODECS.filter((c) => WEBM_AUDIO.includes(c.id))
+      : AUDIO_CODECS;
 
   if (ffmpegOk === false) {
     return (
@@ -146,11 +236,13 @@ function App() {
         <div className="notice">
           <h1>One thing missing</h1>
           <p>
-            Recode uses <strong>ffmpeg</strong> to convert videos on your Mac.
-            Install it once with Homebrew:
+            Recode uses <strong>ffmpeg</strong> to convert videos on your
+            computer. Install it once:
           </p>
-          <code>brew install ffmpeg</code>
-          <p className="muted">Then reopen Recode. Nothing ever leaves your computer.</p>
+          <code>{FFMPEG_INSTALL[platformName()]}</code>
+          <p className="muted">
+            Then reopen Recode. Nothing ever leaves your computer.
+          </p>
           <button onClick={() => invoke<boolean>("check_ffmpeg").then(setFfmpegOk)}>
             Check again
           </button>
@@ -191,7 +283,7 @@ function App() {
               <button
                 key={p.id}
                 className="preset"
-                onClick={() => startConvert(p.id)}
+                onClick={() => startPreset(p.id)}
               >
                 <span className="preset-icon">{p.icon}</span>
                 <span className="preset-title">{p.title}</span>
@@ -199,12 +291,46 @@ function App() {
               </button>
             ))}
           </div>
+
+          <button className="link advanced-toggle" onClick={() => setAdvanced(!advanced)}>
+            {advanced ? "▾" : "▸"} Advanced: pick exact codecs
+          </button>
+
+          {advanced && (
+            <div className="advanced">
+              <label>
+                <span>Video codec</span>
+                <select value={vcodec} onChange={(e) => setVcodec(e.target.value)}>
+                  {videoOptions.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Audio codec</span>
+                <select value={acodec} onChange={(e) => setAcodec(e.target.value)}>
+                  {audioOptions.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Container</span>
+                <select value={container} onChange={(e) => pickContainer(e.target.value)}>
+                  {CONTAINERS.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+              </label>
+              <button onClick={startCustom}>Convert</button>
+            </div>
+          )}
         </>
       )}
 
       {screen === "converting" && (
         <div className="status">
-          <p className="status-title">{presetLabel}</p>
+          <p className="status-title">{jobLabel}</p>
           <p className="muted">{file ? fileName(file) : ""}</p>
           <div className="bar">
             <div className="bar-fill" style={{ width: `${percent}%` }} />
@@ -224,7 +350,7 @@ function App() {
           <div className="actions">
             {output && (
               <button onClick={() => revealItemInDir(output)}>
-                Show in Finder
+                {platformName() === "macos" ? "Show in Finder" : "Show in folder"}
               </button>
             )}
             <button className="secondary" onClick={reset}>
@@ -239,11 +365,22 @@ function App() {
           <span className="big-icon">⚠️</span>
           <p className="status-title">That didn't work</p>
           <pre className="error-detail">{error}</pre>
-          <button className="secondary" onClick={reset}>
-            Start over
-          </button>
+          <div className="actions">
+            <button onClick={() => openUrl(bugReportUrl(error ?? undefined))}>
+              Report this bug
+            </button>
+            <button className="secondary" onClick={reset}>
+              Start over
+            </button>
+          </div>
         </div>
       )}
+
+      <footer>
+        <button className="link" onClick={() => openUrl(bugReportUrl())}>
+          Found a bug? Report it
+        </button>
+      </footer>
     </main>
   );
 }
