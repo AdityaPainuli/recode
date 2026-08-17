@@ -38,6 +38,12 @@ const PRESETS = [
     title: "Audio only",
     desc: "Keep the sound, drop the video",
   },
+  {
+    id: "edit-in-resolve",
+    icon: "🎞️",
+    title: "Edit in DaVinci",
+    desc: "DNxHR for Resolve (free/Linux can't read H.264). Big files",
+  },
 ];
 
 const VIDEO_CODECS = [
@@ -45,6 +51,8 @@ const VIDEO_CODECS = [
   { id: "hevc", label: "H.265 / HEVC" },
   { id: "vp9", label: "VP9" },
   { id: "av1", label: "AV1" },
+  { id: "dnxhr", label: "DNxHR HQ (editing)" },
+  { id: "prores", label: "ProRes HQ (editing)" },
   { id: "copy", label: "Copy (no re-encode)" },
 ];
 
@@ -53,6 +61,7 @@ const AUDIO_CODECS = [
   { id: "opus", label: "Opus" },
   { id: "mp3", label: "MP3" },
   { id: "flac", label: "FLAC" },
+  { id: "pcm", label: "PCM (editing)" },
   { id: "copy", label: "Copy (no re-encode)" },
   { id: "none", label: "No audio" },
 ];

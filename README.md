@@ -36,13 +36,14 @@ Grab the latest build for your system from [Releases](https://github.com/AdityaP
 | Smaller file | HEVC (hardware-accelerated on macOS) | `.mp4` |
 | Web video | VP9/Opus for browsers | `.webm` |
 | Audio only | Strips video, keeps sound | `.m4a` |
+| Edit in DaVinci | DNxHR HQ + PCM audio. Fixes DaVinci Resolve free (especially Linux) refusing H.264/H.265/AAC footage | `.mov` |
 
 ## Advanced mode
 
 For technical users: *Advanced: pick exact codecs* opens direct codec selection.
 
-- Video: H.264, H.265/HEVC, VP9, AV1, or copy (remux without re-encoding)
-- Audio: AAC, Opus, MP3, FLAC, copy, or none
+- Video: H.264, H.265/HEVC, VP9, AV1, DNxHR HQ, ProRes HQ, or copy (remux without re-encoding)
+- Audio: AAC, Opus, MP3, FLAC, PCM, copy, or none
 - Container: MP4, MKV, WebM, MOV
 
 Copy + a different container = instant remux, no quality loss.

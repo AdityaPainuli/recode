@@ -138,6 +138,9 @@ fn video_args(vcodec: &str, container: &str) -> Result<Vec<String>, String> {
             "-tile-columns", "2", "-pix_fmt", "yuv420p",
         ]),
         "av1" => s(&["-c:v", "libsvtav1", "-crf", "32", "-preset", "8", "-pix_fmt", "yuv420p"]),
+        // Editing intermediates: what DaVinci Resolve (free, esp. Linux) accepts.
+        "dnxhr" => s(&["-c:v", "dnxhd", "-profile:v", "dnxhr_hq", "-pix_fmt", "yuv422p"]),
+        "prores" => s(&["-c:v", "prores_ks", "-profile:v", "3", "-pix_fmt", "yuv422p10le"]),
         other => return Err(format!("unknown video codec: {other}")),
     };
     if vcodec == "hevc" && hvc1_tag {
@@ -153,6 +156,7 @@ fn audio_args(acodec: &str) -> Result<Vec<String>, String> {
         "opus" => s(&["-c:a", "libopus", "-b:a", "128k"]),
         "mp3" => s(&["-c:a", "libmp3lame", "-q:a", "2"]),
         "flac" => s(&["-c:a", "flac"]),
+        "pcm" => s(&["-c:a", "pcm_s16le"]),
         "none" => s(&["-an"]),
         other => return Err(format!("unknown audio codec: {other}")),
     })
@@ -164,6 +168,7 @@ fn preset_args(preset: &str) -> Result<(Vec<String>, String), String> {
         "play-anywhere" => ("h264", "aac", "mp4"),
         "smaller-file" => ("hevc", "aac", "mp4"),
         "web-video" => ("vp9", "opus", "webm"),
+        "edit-in-resolve" => ("dnxhr", "pcm", "mov"),
         "audio-only" => {
             let mut args = s(&["-vn"]);
             args.extend(audio_args("aac")?);
