@@ -41,9 +41,20 @@ fn quiet_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     cmd
 }
 
+/// Bundled sidecar (Tauri externalBin places it next to the app binary).
+fn sidecar_ffmpeg() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let name = if cfg!(windows) { "recode-ffmpeg.exe" } else { "recode-ffmpeg" };
+    let p = exe.parent()?.join(name);
+    p.is_file().then_some(p)
+}
+
 /// GUI apps don't inherit the shell PATH on macOS (and often on Linux),
 /// so check the common install locations explicitly before PATH lookup.
 fn find_ffmpeg() -> Option<PathBuf> {
+    if let Some(p) = sidecar_ffmpeg() {
+        return Some(p);
+    }
     let candidates: &[&str] = if cfg!(windows) {
         &[
             "C:\\ffmpeg\\bin\\ffmpeg.exe",
@@ -80,7 +91,11 @@ fn find_ffmpeg() -> Option<PathBuf> {
 }
 
 fn ffprobe_path(ffmpeg: &Path) -> PathBuf {
-    let name = if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" };
+    // Works for both "ffmpeg" and the bundled "recode-ffmpeg" sidecar.
+    let name = ffmpeg
+        .file_name()
+        .map(|n| n.to_string_lossy().replace("ffmpeg", "ffprobe"))
+        .unwrap_or_else(|| "ffprobe".into());
     if ffmpeg.parent().map(|p| p.as_os_str().is_empty()).unwrap_or(true) {
         PathBuf::from(name)
     } else {

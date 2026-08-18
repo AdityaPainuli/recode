@@ -73,15 +73,9 @@ jobs:
 
             **Linux (AppImage)**: `chmod +x Recode_*.AppImage` then run it.
 
-            ## Requirement: ffmpeg
+            ## ffmpeg included
 
-            Recode uses your system's ffmpeg. Install it once:
-
-            - macOS: `brew install ffmpeg`
-            - Windows: `winget install ffmpeg`
-            - Debian/Ubuntu: `sudo apt install ffmpeg`
-
-            The app shows this same instruction on first launch if ffmpeg is missing.
+            ffmpeg is bundled inside the app. Nothing else to install.
 
             ## Found a bug?
 

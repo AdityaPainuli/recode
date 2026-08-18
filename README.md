@@ -26,7 +26,7 @@ Grab the latest build for your system from [Releases](https://github.com/AdityaP
 
 **Windows note**: SmartScreen may warn because the installer is unsigned. *More info* → *Run anyway*.
 
-**Requirement**: Recode uses your system's ffmpeg. Install once: `brew install ffmpeg` (macOS), `winget install ffmpeg` (Windows), `sudo apt install ffmpeg` (Debian/Ubuntu). The app shows this instruction on first launch if it's missing.
+ffmpeg comes bundled with the app since v0.1.2, nothing else to install. (If the bundled copy is ever missing, Recode falls back to a system ffmpeg and shows install instructions.)
 
 ## Presets
 
@@ -58,11 +58,11 @@ Use the **Found a bug? Report it** link in the app footer (the error screen has 
 
 - [Tauri 2](https://tauri.app) (Rust backend, system webview)
 - React + TypeScript + Vite frontend
-- ffmpeg for the actual conversion (system install for now, bundled sidecar planned)
+- ffmpeg for the actual conversion, bundled as a sidecar binary (static builds from [martin-riedl.de](https://ffmpeg.martin-riedl.de/) for macOS, [BtbN](https://github.com/BtbN/FFmpeg-Builds) for Windows/Linux, fetched at build time by `scripts/fetch-ffmpeg.mjs`)
 
 ## Development
 
-Requires Rust, Node, and ffmpeg.
+Requires Rust and Node. ffmpeg sidecars download automatically on first dev/build run.
 
 ```sh
 npm install
@@ -79,7 +79,7 @@ Releases are built by CI: push a `v*` tag and `.github/workflows/release.yml` bu
 
 ## Roadmap
 
-- [ ] Bundle static ffmpeg as a Tauri sidecar (no system ffmpeg dependency)
+- [x] Bundle static ffmpeg as a Tauri sidecar (no system ffmpeg dependency)
 - [ ] Batch conversion (drop multiple files)
 - [ ] Custom output folder
 - [ ] Code signing (macOS notarization, Windows)
